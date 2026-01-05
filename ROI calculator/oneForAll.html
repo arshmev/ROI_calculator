@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoROI | Multi-Industry Automation Calculator</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Smooth transitions */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Custom Range Slider */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px;
+            border-radius: 50%; background: #2563eb; margin-top: -6px; cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; background: #e2e8f0; border-radius: 2px;
+        }
+
+        /* Card Hover Effects */
+        .industry-card:hover { transform: translateY(-5px); border-color: #2563eb; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="goHome()">
+                    <div class="bg-blue-600 text-white p-1.5 rounded-lg">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <span class="text-xl font-bold text-slate-900">Auto<span class="text-blue-600">ROI</span></span>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="goHome()" id="btn-back" class="hidden text-slate-500 hover:text-slate-900 px-3 py-2 text-sm font-medium transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Change Industry
+                    </button>
+                    <button onclick="exportPDF()" id="btn-export" class="hidden bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> Export Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
+
+        <div id="view-selection" class="fade-in">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <h1 class="text-3xl font-bold text-slate-900 mb-3">Select Your Industry</h1>
+                <p class="text-slate-500">Choose your business sector to load specialized job roles, robot replacement ratios, and automation workflows.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="industry-grid">
+                </div>
+        </div>
+
+        <div id="view-calculator" class="hidden fade-in">
+            
+            <div class="mb-8 flex items-center gap-4 border-b border-slate-200 pb-6">
+                <div id="industry-icon-lg" class="text-4xl"></div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900" id="industry-title">Industry Name</h1>
+                    <p class="text-slate-500 text-sm">ROI analysis based on a 20-month financing term.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8" id="report-content">
+                
+                <div class="lg:col-span-4 space-y-6">
+                    
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h2 class="text-sm font-bold uppercase text-slate-500 mb-4 tracking-wide">Operational Basics</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Facility Size (Sq Ft)</label>
+                                <input type="number" value="10000" class="w-full p-2 border rounded text-sm outline-none focus:border-blue-500 transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Days/Month</label>
+                                <input type="number" value="26" class="w-full p-2 border rounded text-sm outline-none focus:border-blue-500 transition">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h2 class="text-sm font-bold uppercase text-slate-500 mb-4 tracking-wide">Staffing & Wages</h2>
+                        <div id="dynamic-inputs-container" class="space-y-6">
+                            </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <details>
+                            <summary class="cursor-pointer text-sm font-semibold text-slate-600 hover:text-blue-600 flex justify-between">
+                                <span>Global Assumptions</span>
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </summary>
+                            <div class="mt-4 space-y-3 pt-2 border-t border-slate-200">
+                                <div class="flex justify-between items-center">
+                                    <label class="text-xs">Robot Cost ($)</label>
+                                    <input type="number" id="sys_cost" value="35000" class="w-20 text-right text-xs border p-1 rounded calc-trigger">
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <label class="text-xs">Maintenance ($/mo)</label>
+                                    <input type="number" id="sys_maint" value="300" class="w-20 text-right text-xs border p-1 rounded calc-trigger">
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <label class="text-xs">Financing Markup (%)</label>
+                                    <input type="number" id="sys_markup" value="10" class="w-20 text-right text-xs border p-1 rounded calc-trigger">
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 space-y-6">
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                            <div class="text-xs text-slate-500 font-bold uppercase">Robots Needed</div>
+                            <div class="text-3xl font-bold text-slate-900 mt-2" id="res_robots">0</div>
+                            <div class="text-xs text-blue-600 mt-1">Across all roles</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                            <div class="text-xs text-slate-500 font-bold uppercase">Monthly Savings</div>
+                            <div class="text-3xl font-bold text-emerald-600 mt-2" id="res_monthly_savings">$0</div>
+                            <div class="text-xs text-slate-400 mt-1">Net Cash Flow</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                            <div class="text-xs text-slate-500 font-bold uppercase">Total Investment</div>
+                            <div class="text-3xl font-bold text-slate-900 mt-2" id="res_investment">$0</div>
+                            <div class="text-xs text-slate-400 mt-1">20-mo Financed</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                            <div class="text-xs text-slate-500 font-bold uppercase">Breakeven</div>
+                            <div class="text-3xl font-bold text-indigo-600 mt-2" id="res_breakeven">--</div>
+                            <div class="text-xs text-slate-400 mt-1">Months</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-80">
+                            <h3 class="text-sm font-bold text-slate-700 mb-4">Monthly Cost Analysis</h3>
+                            <div class="h-60 relative">
+                                <canvas id="costChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-80">
+                            <h3 class="text-sm font-bold text-slate-700 mb-4">20-Month ROI Trajectory</h3>
+                            <div class="h-60 relative">
+                                <canvas id="roiChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800">Financial Executive Summary</h3>
+                            <span class="text-xs font-mono bg-slate-200 px-2 py-1 rounded text-slate-600">Term: 20 Months</span>
+                        </div>
+                        <table class="w-full text-sm text-left">
+                            <tbody class="divide-y divide-slate-100">
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-3 font-medium text-slate-600">Current Labor Cost (Monthly)</td>
+                                    <td class="px-6 py-3 font-bold text-right" id="tbl_labor">$0</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-3 font-medium text-slate-600">Robot Installment (EMI)</td>
+                                    <td class="px-6 py-3 text-red-500 text-right" id="tbl_emi">$0</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-6 py-3 font-medium text-slate-600">Robot Maintenance</td>
+                                    <td class="px-6 py-3 text-red-500 text-right" id="tbl_maint">$0</td>
+                                </tr>
+                                <tr class="bg-emerald-50">
+                                    <td class="px-6 py-3 font-bold text-emerald-800">Total Savings (20 Months)</td>
+                                    <td class="px-6 py-3 font-bold text-emerald-700 text-right text-lg" id="tbl_total_savings">$0</td>
+                                </tr>
+                                <tr class="bg-slate-900 text-white">
+                                    <td class="px-6 py-3 font-medium">Projected ROI</td>
+                                    <td class="px-6 py-3 font-bold text-right text-lg" id="tbl_roi">0%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="text-center pt-4">
+                        <button onclick="alert('This would open a contact form for custom enterprise integration.')" class="text-sm text-blue-600 hover:text-blue-800 font-semibold underline">
+                            Request Custom Enterprise Solution
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. DATA CONFIGURATION (SCALABLE SAAS MODEL) ---
+        // Add new industries here to automatically update the UI
+        const INDUSTRIES = {
+            warehouse: {
+                title: "Warehouse & Logistics",
+                icon: "fa-warehouse",
+                desc: "Picking, packing, sorting, and internal transport.",
+                color: "blue",
+                jobs: [
+                    { id: "pick", name: "Picking & Packing", ratio: 2.0, defaultWage: 18, defaultCount: 10 },
+                    { id: "sort", name: "Sorting & Palletizing", ratio: 3.0, defaultWage: 20, defaultCount: 6 },
+                    { id: "trans", name: "Internal Transport", ratio: 2.5, defaultWage: 19, defaultCount: 5 }
+                ]
+            },
+            restaurant: {
+                title: "Restaurant & QSR",
+                icon: "fa-utensils",
+                desc: "Dishwashing, food running, and dining area cleaning.",
+                color: "orange",
+                jobs: [
+                    { id: "dish", name: "Dishwashing", ratio: 2.0, defaultWage: 15, defaultCount: 4 },
+                    { id: "serve", name: "Food Running", ratio: 1.5, defaultWage: 12, defaultCount: 6 },
+                    { id: "clean", name: "Floor Cleaning", ratio: 3.0, defaultWage: 14, defaultCount: 2 }
+                ]
+            },
+            airport: {
+                title: "Airport & Stations",
+                icon: "fa-plane-departure",
+                desc: "Large scale floor cleaning and waste management.",
+                color: "sky",
+                jobs: [
+                    { id: "floor", name: "Terminal Cleaning", ratio: 4.0, defaultWage: 22, defaultCount: 15 },
+                    { id: "waste", name: "Waste Collection", ratio: 2.5, defaultWage: 20, defaultCount: 8 },
+                    { id: "assist", name: "Passenger Assist", ratio: 1.5, defaultWage: 25, defaultCount: 5 }
+                ]
+            },
+            healthcare: {
+                title: "Healthcare",
+                icon: "fa-hospital",
+                desc: "Medicine transport, linen delivery, and disinfection.",
+                color: "emerald",
+                jobs: [
+                    { id: "med", name: "Medicine Transport", ratio: 2.0, defaultWage: 24, defaultCount: 6 },
+                    { id: "clean", name: "Disinfection", ratio: 3.0, defaultWage: 22, defaultCount: 10 },
+                    { id: "linen", name: "Linen Delivery", ratio: 2.5, defaultWage: 18, defaultCount: 4 }
+                ]
+            },
+            manufacturing: {
+                title: "Manufacturing",
+                icon: "fa-industry",
+                desc: "Assembly line feeding and material handling.",
+                color: "indigo",
+                jobs: [
+                    { id: "mat", name: "Material Handling", ratio: 3.5, defaultWage: 25, defaultCount: 12 },
+                    { id: "qual", name: "Quality Inspection", ratio: 4.0, defaultWage: 28, defaultCount: 5 },
+                    { id: "pack", name: "End-of-Line Packing", ratio: 2.5, defaultWage: 20, defaultCount: 8 }
+                ]
+            },
+            mall: {
+                title: "Commercial Malls",
+                icon: "fa-bag-shopping",
+                desc: "Floor scrubbing and security patrols.",
+                color: "pink",
+                jobs: [
+                    { id: "scrub", name: "Floor Scrubbing", ratio: 4.0, defaultWage: 16, defaultCount: 8 },
+                    { id: "sec", name: "Security Patrol", ratio: 1.5, defaultWage: 20, defaultCount: 10 },
+                    { id: "bath", name: "Restroom Cleaning", ratio: 2.0, defaultWage: 15, defaultCount: 6 }
+                ]
+            },
+            custom: {
+                title: "Custom Solution",
+                icon: "fa-cogs",
+                desc: "Define your own automation workflows.",
+                color: "slate",
+                jobs: [
+                    { id: "c1", name: "Task A (High Repetition)", ratio: 2.0, defaultWage: 20, defaultCount: 5 },
+                    { id: "c2", name: "Task B (Heavy Lifting)", ratio: 3.0, defaultWage: 22, defaultCount: 5 },
+                    { id: "c3", name: "Task C (Transport)", ratio: 2.0, defaultWage: 18, defaultCount: 5 }
+                ]
+            }
+        };
+
+        let currentIndustry = null;
+        let chartInstances = {};
+
+        // --- 2. INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderIndustryGrid();
+            initCharts();
+        });
+
+        // --- 3. VIEW MANAGEMENT ---
+        function renderIndustryGrid() {
+            const grid = document.getElementById('industry-grid');
+            grid.innerHTML = '';
+
+            for (const [key, data] of Object.entries(INDUSTRIES)) {
+                const card = document.createElement('div');
+                card.className = `industry-card bg-white p-6 rounded-xl border border-slate-200 shadow-sm cursor-pointer transition flex flex-col items-center text-center h-full`;
+                card.onclick = () => loadCalculator(key);
+                card.innerHTML = `
+                    <div class="w-16 h-16 bg-${data.color}-50 text-${data.color}-600 rounded-full flex items-center justify-center text-2xl mb-4">
+                        <i class="fa-solid ${data.icon}"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900 mb-2">${data.title}</h3>
+                    <p class="text-sm text-slate-500">${data.desc}</p>
+                `;
+                grid.appendChild(card);
+            }
+        }
+
+        function loadCalculator(key) {
+            currentIndustry = INDUSTRIES[key];
+            
+            // Switch Views
+            document.getElementById('view-selection').classList.add('hidden');
+            document.getElementById('view-calculator').classList.remove('hidden');
+            document.getElementById('btn-back').classList.remove('hidden');
+            document.getElementById('btn-export').classList.remove('hidden');
+
+            // Set Header Info
+            document.getElementById('industry-title').innerText = currentIndustry.title;
+            document.getElementById('industry-icon-lg').innerHTML = `<i class="fa-solid ${currentIndustry.icon} text-${currentIndustry.color}-600"></i>`;
+
+            // Render Inputs Dynamically
+            const container = document.getElementById('dynamic-inputs-container');
+            container.innerHTML = '';
+
+            currentIndustry.jobs.forEach((job, index) => {
+                const html = `
+                    <div class="border-b border-slate-100 pb-4 last:border-0 last:pb-0 job-row" data-ratio="${job.ratio}">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-sm text-slate-800">${job.name}</span>
+                            <span class="text-xs font-mono text-${currentIndustry.color}-600 bg-${currentIndustry.color}-50 px-2 py-1 rounded">
+                                Ratio 1:${job.ratio}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-2">
+                            <div>
+                                <label class="text-xs text-slate-400">Staff Count</label>
+                                <input type="number" value="${job.defaultCount}" class="input-count w-full border rounded p-2 text-sm focus:ring-1 ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400">Hourly Wage ($)</label>
+                                <input type="number" value="${job.defaultWage}" class="input-wage w-full border rounded p-2 text-sm focus:ring-1 ring-blue-500 outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400 flex justify-between">
+                                <span>Avg Monthly Hours</span>
+                                <span class="hours-disp">160 hrs</span>
+                            </label>
+                            <input type="range" min="0" max="250" value="160" class="input-hours w-full mt-1">
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+
+            // Add Event Listeners to New Inputs
+            document.querySelectorAll('.input-count, .input-wage, .input-hours, .calc-trigger').forEach(el => {
+                el.addEventListener('input', calculateROI);
+            });
+
+            // Slider Text Sync
+            document.querySelectorAll('.input-hours').forEach(slider => {
+                slider.addEventListener('input', (e) => {
+                    e.target.closest('div').querySelector('.hours-disp').innerText = `${e.target.value} hrs`;
+                });
+            });
+
+            // Initial Calculate
+            calculateROI();
+        }
+
+        function goHome() {
+            document.getElementById('view-calculator').classList.add('hidden');
+            document.getElementById('view-selection').classList.remove('hidden');
+            document.getElementById('btn-back').classList.add('hidden');
+            document.getElementById('btn-export').classList.add('hidden');
+            currentIndustry = null;
+        }
+
+        // --- 4. CALCULATION CORE ---
+        function calculateROI() {
+            if (!currentIndustry) return;
+
+            // Gather Constants
+            const robotCost = parseFloat(document.getElementById('sys_cost').value) || 35000;
+            const maintCost = parseFloat(document.getElementById('sys_maint').value) || 300;
+            const markupPercent = parseFloat(document.getElementById('sys_markup').value) || 10;
+            
+            let totalMonthlyLabor = 0;
+            let totalRobots = 0;
+
+            // Iterate through Job Rows
+            const rows = document.querySelectorAll('.job-row');
+            rows.forEach(row => {
+                const count = parseFloat(row.querySelector('.input-count').value) || 0;
+                const wage = parseFloat(row.querySelector('.input-wage').value) || 0;
+                const hours = parseFloat(row.querySelector('.input-hours').value) || 0;
+                const ratio = parseFloat(row.dataset.ratio);
+
+                // Labor Cost
+                totalMonthlyLabor += (count * wage * hours);
+
+                // Robot Count (Ceiling)
+                totalRobots += Math.ceil(count / ratio);
+            });
+
+            // Financials
+            const principal = totalRobots * robotCost;
+            const totalInvestment = principal * (1 + (markupPercent / 100));
+            const monthlyEMI = totalInvestment / 20; // Fixed 20 month term
+            const totalMonthlyMaint = totalRobots * maintCost;
+            const totalAutomationMonthly = monthlyEMI + totalMonthlyMaint;
+
+            // Results
+            const monthlySavings = totalMonthlyLabor - totalAutomationMonthly;
+            const totalSavings20 = monthlySavings * 20;
+            const roi = totalInvestment > 0 ? (totalSavings20 / totalInvestment) * 100 : 0;
+            
+            // Breakeven (Months to cover investment via net cash flow is tricky in EMI model. 
+            // We use standard cash flow logic: When does Cumulative Savings turn positive?)
+            // Since Savings = Labor - (EMI + Maint), if Savings > 0, you are cash positive immediately.
+            // If we mean "When does savings equal the sticker price of robots?", use:
+            const simpleBreakeven = totalInvestment / (totalMonthlyLabor - totalMonthlyMaint); 
+            const breakevenDisplay = monthlySavings > 0 
+                ? (simpleBreakeven > 20 ? "20+" : Math.ceil(simpleBreakeven)) 
+                : "Never";
+
+            // Update UI
+            const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+            
+            document.getElementById('res_robots').innerText = totalRobots;
+            document.getElementById('res_monthly_savings').innerText = fmt(monthlySavings);
+            document.getElementById('res_investment').innerText = fmt(totalInvestment);
+            document.getElementById('res_breakeven').innerText = breakevenDisplay;
+
+            document.getElementById('tbl_labor').innerText = fmt(totalMonthlyLabor);
+            document.getElementById('tbl_emi').innerText = "-" + fmt(monthlyEMI);
+            document.getElementById('tbl_maint').innerText = "-" + fmt(totalMonthlyMaint);
+            document.getElementById('tbl_total_savings').innerText = fmt(totalSavings20);
+            document.getElementById('tbl_roi').innerText = roi.toFixed(1) + "%";
+
+            // Update Charts
+            updateCharts(totalMonthlyLabor, totalAutomationMonthly, monthlySavings);
+        }
+
+        // --- 5. CHARTS & EXPORT ---
+        function initCharts() {
+            // Cost Chart
+            const ctxCost = document.getElementById('costChart').getContext('2d');
+            chartInstances.cost = new Chart(ctxCost, {
+                type: 'bar',
+                data: {
+                    labels: ['Current Labor', 'Automation (EMI+Maint)'],
+                    datasets: [{
+                        label: 'Monthly Cost',
+                        data: [0, 0],
+                        backgroundColor: ['#64748b', '#2563eb'],
+                        borderRadius: 6,
+                        barThickness: 50
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+
+            // ROI Chart
+            const ctxRoi = document.getElementById('roiChart').getContext('2d');
+            chartInstances.roi = new Chart(ctxRoi, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 20}, (_, i) => `M${i+1}`),
+                    datasets: [{
+                        label: 'Cumulative Savings',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    scales: { y: { grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        function updateCharts(labor, automation, monthlySave) {
+            // Update Bar Chart
+            chartInstances.cost.data.datasets[0].data = [labor, automation];
+            chartInstances.cost.update();
+
+            // Update Line Chart (Cumulative)
+            let cumulative = 0;
+            const dataPoints = [];
+            for(let i=0; i<20; i++) {
+                cumulative += monthlySave;
+                dataPoints.push(cumulative);
+            }
+            chartInstances.roi.data.datasets[0].data = dataPoints;
+            chartInstances.roi.update();
+        }
+
+        function exportPDF() {
+            const element = document.getElementById('view-calculator');
+            // Temporarily hide the details block for clean PDF
+            const details = document.querySelector('details');
+            details.open = true; // Force open to show assumptions
+            
+            const opt = {
+                margin: 0.3,
+                filename: `ROI_Report_${currentIndustry.title.replace(/\s+/g, '_')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+            };
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                details.open = false; // Reset
+            });
+        }
+    </script>
+</body>
+</html>
